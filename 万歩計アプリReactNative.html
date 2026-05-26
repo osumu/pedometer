@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React Native for Web (CDN)</title>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <script src="https://unpkg.com/react-native-web@0.19/dist/bundles/react-native-web.js"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* 画面全体をアプリっぽい背景にするためのCSS */
+        html,
+        body,
+        #root {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // CDNからReact Nativeのコンポーネントを取り出す
+        const { View, Text, StyleSheet, TouchableOpacity } = ReactNative;
+        const { useState } = React;
+
+        function App() {
+            const [steps, setSteps] = useState(0);
+
+            return (
+                <View style={styles.container}>
+                    <Text style={styles.title}>🚶‍♂️ CDN万歩計 🚶‍♀️</Text>
+
+                    <View style={styles.card}>
+                        <Text style={styles.label}>今日の歩数</Text>
+                        <Text style={styles.stepNumber}>{steps.toLocaleString()} 歩</Text>
+                    </View>
+
+                    {/* Webなので、ボタンを押して歩数が増えるシミュレーション */}
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={() => setSteps(steps + 100)}
+                    >
+                        <Text style={styles.buttonText}>100歩歩く（テスト）</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+
+        // React Native形式のスタイルシート（CSS）
+        const styles = StyleSheet.create({
+            container: {
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 20,
+            },
+            title: {
+                fontSize: 28,
+                fontWeight: 'bold',
+                marginBottom: 30,
+                color: '#333',
+            },
+            card: {
+                backgroundColor: '#fff',
+                width: '100%',
+                maxWidth: 400,
+                padding: 30,
+                borderRadius: 15,
+                marginBottom: 20,
+                alignItems: 'center',
+                // React Native for Webがブラウザ用box-shadowに変換してくれる
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            label: {
+                fontSize: 16,
+                color: '#666',
+                marginBottom: 10,
+            },
+            stepNumber: {
+                fontSize: 42,
+                fontWeight: 'bold',
+                color: '#2196F3',
+            },
+            button: {
+                backgroundColor: '#4CAF50',
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 25,
+            },
+            buttonText: {
+                color: '#fff',
+                fontSize: 16,
+                fontWeight: 'bold',
+            }
+        });
+
+        // HTMLの#rootにアプリをレンダリング
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
