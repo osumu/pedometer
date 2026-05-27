@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML5 万歩計（Plotly版）</title>
+    <title>万歩計</title>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         body {
@@ -114,14 +114,13 @@
         <div class="counter">
             <span id="stepCount">0</span><span class="unit">歩</span>
         </div>
-        <div class="settings-info">感度設定: 低（誤検知防止モード）</div>
     </div>
 
-    <button id="resetBtn" class="reset-btn">本日の歩数をリセット</button>
+    <button id="resetBtn" class="reset-btn">歩数をリセット</button>
 </div>
 
 <div class="chart-container">
-    <div class="chart-title">過去7日間の歩数履歴（縦軸固定: 10,000歩）</div>
+    <div class="chart-title">過去7日間の歩数履歴</div>
     <div id="stepChart"></div>
 </div>
 
