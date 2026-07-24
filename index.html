@@ -1,268 +1,102 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>万歩計</title>
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <title>MPU-6500 Cube with Three.js</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f4f7f6;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
             margin: 0;
+            overflow: hidden;
         }
-        .container {
-            background-color: white;
-            padding: 25px;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            text-align: center;
-            width: 90%;
-            max-width: 480px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-        }
-        h1 {
-            color: #2c3e50;
-            font-size: 22px;
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-        .counter-box {
-            background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%);
-            padding: 20px;
-            border-radius: 16px;
-            margin: 20px 0;
-        }
-        .counter {
-            font-size: 64px;
-            font-weight: bold;
-            color: #2e7d32;
-            line-height: 1;
-        }
-        .counter span.unit {
-            font-size: 20px;
-            color: #455a64;
-            margin-left: 5px;
-        }
-        .settings-info {
-            font-size: 12px;
-            color: #78909c;
-            margin-top: 5px;
-        }
-        button {
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            font-size: 16px;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            margin: 5px;
-            transition: all 0.2s ease;
-            font-weight: 600;
-        }
-        button:active {
-            transform: scale(0.96);
-        }
-        .start-btn {
-            background: linear-gradient(135deg, #007aff 0%, #0056b3 100%);
-            width: 100%;
+
+        canvas {
             display: block;
-            margin-bottom: 15px;
         }
-        .reset-btn {
-            background-color: #ef5350;
-            font-size: 14px;
-            padding: 10px 20px;
-        }
-        /* グラフエリア */
-        .chart-container {
-            background-color: white;
-            padding: 15px;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            width: 90%;
-            max-width: 480px;
-            box-sizing: border-box;
-        }
-        .chart-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #546e7a;
-            margin-top: 5px;
-            margin-bottom: 5px;
-            text-align: center;
-        }
-        #stepChart {
-            width: 100%;
-            height: 300px;
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-family: sans-serif;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.min.js"></script>
 </head>
+
 <body>
-
-<div class="container">
-    <h1>HTML5 万歩計</h1>
-    <button id="startBtn" class="start-btn">計測を開始する</button>
-
-    <div class="counter-box">
-        <div class="counter">
-            <span id="stepCount">0</span><span class="unit">歩</span>
-        </div>
+    <div id="info">
+        ピッチ（Y軸）: 0°, ロール（X軸）: 0°, ヨー（Z軸）: 0° <br><span id="temp">0.0°C</span>
     </div>
 
-    <button id="resetBtn" class="reset-btn">歩数をリセット</button>
-</div>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-<div class="chart-container">
-    <div class="chart-title">過去7日間の歩数履歴</div>
-    <div id="stepChart"></div>
-</div>
+        const geometry = new THREE.BoxGeometry(2, 2, 2);
+        const material = new THREE.MeshNormalMaterial();
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
 
-<script>
-    let stepCount = 0;
-    let isStep = false;
-    
-    // 【変更点1】センサーの感度を下げる
-    // しきい値を 11.5 から 13.5 に引き上げ。これにより、手元のちょっとしたブレではカウントされなくなります。
-    const threshold = 13.5; 
-    
-    const stepCountDisplay = document.getElementById('stepCount');
-    const startBtn = document.getElementById('startBtn');
-    const resetBtn = document.getElementById('resetBtn');
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(0, 0, 5).normalize();
+        scene.add(light);
 
-    function getTodayString() {
-        const today = new Date();
-        return today.toISOString().split('T')[0];
-    }
+        camera.position.set(0, 0, 5);
+        camera.lookAt(0, 0, 0);
 
-    function saveSteps() {
-        const todayStr = getTodayString();
-        localStorage.setItem(todayStr, stepCount);
-        updateChart();
-    }
-
-    function loadTodaySteps() {
-        const todayStr = getTodayString();
-        const savedSteps = localStorage.getItem(todayStr);
-        if (savedSteps) {
-            stepCount = parseInt(savedSteps, 10);
-            stepCountDisplay.textContent = stepCount;
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
         }
-    }
+        animate();
 
-    function getPast7DaysData() {
-        const labels = [];
-        const data = [];
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
-            
-            labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
-            const steps = localStorage.getItem(dateStr) ? parseInt(localStorage.getItem(dateStr), 10) : 0;
-            data.push(steps);
-        }
-        return { labels, data };
-    }
+        async function fetchData() {
+            try {
+                const res = await fetch('/data');
+                const data = await res.json();
+                const pitch = data.pitch || 0;
+                const roll = data.roll || 0;
+                const yaw = data.yaw || 0;
+                const temp = data.temp || 0;
 
-    // 【変更点2・3】Plotlyによる描画と縦軸（Y軸）の範囲固定
-    function updateChart() {
-        const chartData = getPast7DaysData();
+                const euler = new THREE.Euler(
+                    pitch * Math.PI / 180,
+                    roll * Math.PI / 180,
+                    yaw * Math.PI / 180,
+                    'ZYX'
+                );
+                cube.quaternion.setFromEuler(euler);
 
-        // グラフのデータ設定
-        const trace = {
-            x: chartData.labels,
-            y: chartData.data,
-            type: 'bar',
-            marker: {
-                color: '#2e7d32',
-                opacity: 0.8
-            },
-            name: '歩数'
-        };
+                document.getElementById('info').innerHTML =
+                    `ピッチ（Y軸）: ${pitch.toFixed(1)}°, ロール（X軸）: ${roll.toFixed(1)}°, ヨー（Z軸）: ${yaw.toFixed(1)}° <br><span id="temp">${temp.toFixed(1)}°C</span>`;
 
-        // グラフのレイアウト設定
-        const layout = {
-            margin: { l: 40, r: 20, t: 20, b: 40 },
-            font: { family: 'Helvetica Neue, sans-serif', size: 12 },
-            xaxis: {
-                type: 'category'
-            },
-            yaxis: {
-                // 【重要】縦軸（Y軸）の最小値・最大値を固定
-                range: [0, 10000], 
-                dtick: 2000,       // 2,000歩刻みで目盛り線を表示
-                fixedrange: true   // スマートフォンでのピンチズームやドラッグによる軸の変動を禁止
-            },
-            responsive: true
-        };
-
-        // 不要なツールバーを非表示にする設定
-        const config = {
-            displayModeBar: false
-        };
-
-        // グラフの描画を実行
-        Plotly.newPlot('stepChart', [trace], layout, config);
-    }
-
-    // ボタンイベント
-    resetBtn.addEventListener('click', () => {
-        if(confirm("本日の歩数をリセットしますか？")) {
-            stepCount = 0;
-            stepCountDisplay.textContent = stepCount;
-            saveSteps();
-        }
-    });
-
-    startBtn.addEventListener('click', () => {
-        if (typeof DeviceMotionEvent.requestPermission === 'function') {
-            DeviceMotionEvent.requestPermission()
-                .then(permissionState => {
-                    if (permissionState === 'granted') {
-                        startTracking();
-                        startBtn.style.display = 'none';
-                    }
-                }).catch(console.error);
-        } else {
-            startTracking();
-            startBtn.style.display = 'none';
-        }
-    });
-
-    function startTracking() {
-        window.addEventListener('devicemotion', (event) => {
-            if (!event.accelerationIncludingGravity) return;
-
-            const x = event.accelerationIncludingGravity.x || 0;
-            const y = event.accelerationIncludingGravity.y || 0;
-            const z = event.accelerationIncludingGravity.z || 0;
-            const acceleration = Math.sqrt(x * x + y * y + z * z);
-
-            if (acceleration > threshold) {
-                if (!isStep) {
-                    stepCount++;
-                    stepCountDisplay.textContent = stepCount;
-                    isStep = true;
-                    saveSteps();
+                const tempSpan = document.getElementById('temp');
+                if (temp >= 60) {
+                    tempSpan.style.color = '#ff0000';
+                } else if (temp >= 50) {
+                    tempSpan.style.color = '#ff9900';
+                } else if (temp >= 40) {
+                    tempSpan.style.color = '#ffff00';
+                } else {
+                    tempSpan.style.color = '#ffffff';
                 }
-            } else if (acceleration < threshold - 2.5) {
-                isStep = false;
+
+            } catch (e) {
+                console.error("Data Acquisition Failure:", e);
             }
-        });
-    }
+        }
 
-    window.onload = () => {
-        loadTodaySteps();
-        updateChart();
-    };
-</script>
-
+        setInterval(fetchData, 100);
+    </script>
 </body>
+
 </html>
